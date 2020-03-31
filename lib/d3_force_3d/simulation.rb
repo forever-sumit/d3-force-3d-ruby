@@ -1,5 +1,10 @@
+require "d3_timer/timer"
+
 module D3Force3d
   class Simulation
+
+    extend D3Timer::Timer
+
     MAX_DIMENSIONS = 3
 
     @@initialRadius = 10
@@ -10,7 +15,7 @@ module D3Force3d
     @@alphaDecay = 1 - @@alphaMin ** (1 / 300)
     @@alphaTarget = 0
     @@velocityDecay = 0.6
-    # @@stepper = timer(step)
+    @@stepper = timer{ step }
     # @@event = dispatch("tick", "end")
     @@forces = {}
 
