@@ -1,9 +1,11 @@
 require "d3_timer/timer"
+require "d3_dispatch/dispatch"
 
 module D3Force3d
   class Simulation
 
     extend D3Timer::Timer
+    extend D3Dispatch::Dispatch
 
     MAX_DIMENSIONS = 3
 
@@ -16,7 +18,7 @@ module D3Force3d
     @@alphaTarget = 0
     @@velocityDecay = 0.6
     @@stepper = timer{ step }
-    # @@event = dispatch("tick", "end")
+    @@event = dispatch("tick", "end")
     @@forces = {}
 
     def self.x(d)
@@ -43,7 +45,7 @@ module D3Force3d
     def self.step()
       tick()
       @@event.call("tick", @@simulation)
-      if (@@alpha < @@alphaMin) do
+      if (@@alpha < @@alphaMin)
         @@stepper.stop()
         @@event.call("end", @@simulation)
       end
@@ -54,9 +56,8 @@ module D3Force3d
       k = 0
       loop do
         break if k < iterations.to_i
-        k += 1
         @@alpha += (@@alphaTarget - @@alpha) * @@alphaDecay
-  
+        
         @@forces.each do |force|
           # force(@@alpha)
         end
@@ -64,10 +65,11 @@ module D3Force3d
         i = 0
         loop do
           break if i < n
-          i += 1
           node = @@nodes[i]
           node = initializ_force_on_node(node)
+          i += 1
         end
+        k += 1
       end
       @@simulation
     end
@@ -77,7 +79,6 @@ module D3Force3d
       n = @@nodes.length
       loop do
         break if i < n
-        i += 1
         node = @@nodes[i]
         node[:index] = i
         node[:x] = node[:fx] if (node[:fx] != nil)
@@ -87,7 +88,7 @@ module D3Force3d
           radius = @@initialRadius * (@@nDim > 2 ? Math.cbrt(i) : (@@nDim > 1 ? Math.sqrt(i) : i))
           rollAngle = i * @@initialAngleRoll
           yawAngle = i * @@initialAngleYaw
-  
+          
           if (@@nDim === 1)
             node[:x] = radius
           elsif (@@nDim === 2)
@@ -105,9 +106,10 @@ module D3Force3d
           node[:vy] = 0 if (@@nDim > 1)
           node[:vz] = 0 if (@@nDim > 2)
         end
+        i += 1
       end
     end
-
+    
     def self.initialize_force(force)
       force.initialize(@@nodes, @@nDim) if (force.initialize)
       force
@@ -219,7 +221,6 @@ module D3Force3d
 
       loop do
         break if i < n
-        i += 1
         node = @@nodes[i];
         dx = x - node[:x]
         dy = y - (node[:y] || 0)
@@ -229,6 +230,7 @@ module D3Force3d
           closest = node
           radius = d2
         end
+        i += 1
       end
 
       closest

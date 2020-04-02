@@ -8,7 +8,6 @@ module D3Timer
     @@clockNow = nil
     @@clockSkew = 0
     @@clock = Time
-    @@setFrame = setTimeout(&block, 17)
 
     attr_accessor :_call, :_time, :_next
 
@@ -22,20 +21,20 @@ module D3Timer
     
     def self.now
       @@clockNow || (
-        @@setFrame{ clear_now }
+        set_timeout(17){ clear_now }
         @@clockNow = @@clock.now().to_i + @@clockSkew
       )
     end
 
-    def self.timer(&block, delay = 0, time = now)
+    def self.timer(delay = 0, time = now, &block)
       t = new Timer
-      t.restart(block, delay, time)
+      t.restart(delay, time, &block)
       t
     end
 
     def self.timer_flush() {
-      now # Get the current time, if not already set.
-      @@frame = @@frame.to_i + 1 #Pretend we’ve set an alarm, if we haven’t already.
+      self.now
+      # @@frame = @@frame.to_i + 1 #Pretend we’ve set an alarm, if we haven’t already.
       t = @@taskHead
       while (t)
         @_call.call(null, e) if ((e = @@clockNow.to_i - t._time) >= 0)
@@ -44,9 +43,9 @@ module D3Timer
       @@frame = nil
     end
 
-    def restart(&block, delay, time)
+    def restart(delay, time, &block)
       time = time + delay
-      if (!@_next && @@taskTail !== self)
+      if (!@_next && @@taskTail != self)
         if (@@taskTail)
           @@taskTail._next = self 
         else
@@ -66,7 +65,10 @@ module D3Timer
         sleep
       end
     end
-  
+    
+    def set_timeout(delay, &block)
+
+    end
     private
 
     def wake
@@ -112,19 +114,20 @@ module D3Timer
     end
 
     def sleep(time = 0) {
-      return if (@@frame) # Soonest alarm already set, or will be.
-      @@timeout = clearTimeout(@@timeout) if (@@timeout) 
-      delay = time - @@clockNow; # Strictly less than if we recomputed clockNow.
-      if (delay > 24)
-        @@timeout = setTimeout(wake, time - @@clock.now().to_i - @@clockSkew) if (time < Float::INFINITY)
-        @@interval = clearInterval(interval) if (@@interval) 
-      else
-        if (!@@interval)
-          @@clockLast = @@clock.now().to_i
-          @@interval = setInterval(poke, @@pokeDelay);
+      if (!@@frame)
+        @@timeout = clearTimeout(@@timeout) if (@@timeout)
+        delay = time - @@clockNow; # Strictly less than if we recomputed clockNow.
+        if (delay > 24)
+          @@timeout = setTimeout(wake, time - @@clock.now().to_i - @@clockSkew) if (time < Float::INFINITY)
+          @@interval = clearInterval(interval) if (@@interval) 
+        else
+          if (!@@interval)
+            @@clockLast = @@clock.now().to_i
+            @@interval = setInterval(poke, @@pokeDelay);
+          end
+          @@frame = 1
+          set_timeout(17){ wake }
         end
-        @@frame = 1
-        @@setFrame{ wake }
       end
     end
   end
