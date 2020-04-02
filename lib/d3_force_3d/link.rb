@@ -1,4 +1,3 @@
-require 'pry'
 require "d3_force_3d/jiggle"
 
 module D3Force3d
@@ -23,7 +22,6 @@ module D3Force3d
     def self.force_links(links = nil)
       @@id = method(:index)
       @@strength = method(:default_strength)
-      # binding.pry
       @@distance = constant(30)
       @@iterations = 1
       @@count = []
@@ -131,7 +129,6 @@ module D3Force3d
         self.class.initialize
         force
       else
-        binding.pry
         @@links
       end
     end
