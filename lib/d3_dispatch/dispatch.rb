@@ -22,19 +22,6 @@ module D3Dispatch
       end
       Dispatch.new(_)
     end
-    
-    def parse_typenames(typenames, types)
-      typenames.strip.split(/^|\s+/).map do |t|
-        name = ""
-        i = t.index(".")
-        if (i && i >= 0)
-          name = t.slice(i + 1, t.length - 1)
-          t = t.slice(0, i)
-        end
-        raise ("unknown type: " + t) if (t && !types.include?(t))
-        {type: t, name: name}
-      end
-    end
 
     def on(typename, *args ,&block)
       _ = self._
@@ -85,6 +72,21 @@ module D3Dispatch
       while(i < n)
         t[i][:value].call(that, args)
         i += 1
+      end
+    end
+
+    private
+
+    def parse_typenames(typenames, types)
+      typenames.strip.split(/^|\s+/).map do |t|
+        name = ""
+        i = t.index(".")
+        if (i && i >= 0)
+          name = t.slice(i + 1, t.length - 1)
+          t = t.slice(0, i)
+        end
+        raise ("unknown type: " + t) if (t && !types.include?(t))
+        {type: t, name: name}
       end
     end
 
