@@ -3,11 +3,13 @@ module D3Timer
     @@frame = nil #is an animation frame pending?
     @@timeout = nil # is a timeout pending?
     @@interval = nil # are any timers active?
-    @@pokeDelay = 1000 #how frequently we check for clock skew
+    @@pokeDelay = 1 #how frequently we check for clock skew , 1sec = 1000ms
     @@clockLast = nil
     @@clockNow = nil
     @@clockSkew = 0
     @@clock = Time
+    @@taskTail = nil
+    @@taskHead = nil
 
     attr_accessor :_call, :_time, :_next
 
@@ -20,21 +22,18 @@ module D3Timer
     end
     
     def self.now
-      @@clockNow || (
-        set_timeout(17){ clear_now }
-        @@clockNow = @@clock.now().to_i + @@clockSkew
-      )
+      @@clockNow || @@clockNow = @@clock.now().to_i + @@clockSkew
     end
 
     def self.timer(delay = 0, time = now, &block)
-      t = new Timer
+      t = Timer.new
       t.restart(delay, time, &block)
       t
     end
 
-    def self.timer_flush() {
+    def self.timer_flush
       self.now
-      # @@frame = @@frame.to_i + 1 #Pretend we’ve set an alarm, if we haven’t already.
+      @@frame = @@frame.to_i + 1 #Pretend we’ve set an alarm, if we haven’t already.
       t = @@taskHead
       while (t)
         @_call.call(null, e) if ((e = @@clockNow.to_i - t._time) >= 0)
@@ -55,27 +54,52 @@ module D3Timer
       end
       @_call = block
       @_time = time
-      sleep
+      timer_sleep
     end
 
     def stop
       if (@_call)
         @_call = nil
         @_time = Float::INFINITY
-        sleep
+        timer_sleep
       end
     end
-    
-    def set_timeout(delay, &block)
 
-    end
     private
+
+    def set_timeout(delay = 0.017, &block)
+      thread = Thread.new do
+        sleep delay.to_i
+        yield
+      end
+      thread.join
+      thread
+    end
+
+    def clear_timeout(thread)
+      Thread.kill(thread)
+    end
+
+    def set_interval(time_interval, &block)
+      thread = Thread.new do
+        loop do
+          sleep time_interval.to_i
+          yield
+        end
+      end
+      thread.join
+      thread
+    end
+
+    def clear_interval(thread)
+      clear_timeout(thread)
+    end
 
     def wake
       @@clockNow = (@@clockLast = @@clock.now().to_i) + @@clockSkew
       @@frame = @@timeout = nil
       begin
-        timerFlush
+        self.class.timerFlush
       rescue
         #handle the error here
       ensure
@@ -110,25 +134,31 @@ module D3Timer
         end
       end
       @@taskTail = t0
-      sleep(time)
+      timer_sleep(time)
     end
 
-    def sleep(time = 0) {
-      if (!@@frame)
-        @@timeout = clearTimeout(@@timeout) if (@@timeout)
-        delay = time - @@clockNow; # Strictly less than if we recomputed clockNow.
-        if (delay > 24)
-          @@timeout = setTimeout(wake, time - @@clock.now().to_i - @@clockSkew) if (time < Float::INFINITY)
-          @@interval = clearInterval(interval) if (@@interval) 
+    def timer_sleep(time = 0)
+      return if @@frame
+      @@timeout = clear_timeout(@@timeout) if (@@timeout)
+      delay = time - @@clockNow; # Strictly less than if we recomputed clockNow.
+      if (delay > 24)
+        @@timeout = set_timeout(time - @@clock.now().to_i - @@clockSkew){ wake } if (time < Float::INFINITY)
+        @@interval = clear_interval(@@interval) if (@@interval)
+      else
+        if (!@@interval)
+          @@clockLast = @@clock.now().to_i
+          @@interval = set_interval(@@pokeDelay){ temp_test }
         else
-          if (!@@interval)
-            @@clockLast = @@clock.now().to_i
-            @@interval = setInterval(poke, @@pokeDelay);
-          end
           @@frame = 1
-          set_timeout(17){ wake }
+          set_timeout{ wake }
         end
       end
+    end
+
+    def temp_test #Need to change the name, right noe it is for testing purpose
+      poke
+      @@frame = 1
+      set_timeout{ wake }
     end
   end
 end
