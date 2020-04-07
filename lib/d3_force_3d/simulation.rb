@@ -198,7 +198,7 @@ module D3Force3d
         node[:x] = node[:fx] if (node[:fx] != nil)
         node[:y] = node[:fy] if (node[:fy] != nil)
         node[:z] = node[:fz] if (node[:fz] != nil)
-        if (is_nan?(node[:x]) || (@nDim > 1 && is_nan?(node[:y])s) || (@nDim > 2 && is_nan?(node[:z]))
+        if(is_nan?(node[:x]) || (@nDim > 1 && is_nan?(node[:y])) || (@nDim > 2 && is_nan?(node[:z])))
           radius = @initialRadius * (@nDim > 2 ? Math.cbrt(i) : (@nDim > 1 ? Math.sqrt(i) : i))
           rollAngle = i * @initialAngleRoll
           yawAngle = i * @initialAngleYaw
@@ -215,10 +215,10 @@ module D3Force3d
             node[:z] = radius * Math.sin(rollAngle) * Math.sin(yawAngle)
           end
         end
-        if (is_nan?(node[:vx]) || (@nDim > 1 && is_nan?(node[:vy])) || (@nDim > 2 && is_nan?(node[:vz])))
+        if(is_nan?(node[:vx]) || (@nDim > 1 && is_nan?(node[:vy])) || (@nDim > 2 && is_nan?(node[:vz])))
           node[:vx] = 0
-          node[:vy] = 0 if (@nDim > 1)
-          node[:vz] = 0 if (@nDim > 2)
+          node[:vy] = 0 if @nDim > 1
+          node[:vz] = 0 if @nDim > 2
         end
         i += 1
       end
