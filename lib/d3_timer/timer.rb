@@ -1,3 +1,5 @@
+require 'rufus-scheduler'
+
 module D3Timer
   class Timer
     @@frame = nil #is an animation frame pending?
@@ -36,17 +38,17 @@ module D3Timer
       @@frame = @@frame.to_i + 1 #Pretend we’ve set an alarm, if we haven’t already.
       t = @@taskHead
       while (t)
-        @_call.call(null, e) if ((e = @@clockNow.to_i - t._time) >= 0)
+        t._call.call(nil, e) if ((e = @@clockNow.to_i - t._time) >= 0)
         t = t._next
       end
       @@frame = nil
     end
 
-    def restart(delay, time, &block)
+    def restart(delay = 0, time = self.class.now, &block)
       time = time + delay
       if (!@_next && @@taskTail != self)
         if (@@taskTail)
-          @@taskTail._next = self 
+          @@taskTail._next = self
         else
           @@taskHead = self
           @@taskTail = self
@@ -61,45 +63,43 @@ module D3Timer
       if (@_call)
         @_call = nil
         @_time = Float::INFINITY
-        timer_sleep
+        @@frame = nil
+        timer_sleep(@_time)
       end
     end
 
     private
 
     def set_timeout(delay = 0.017, &block)
-      thread = Thread.new do
-        sleep delay.to_i
+      scheduler = Rufus::Scheduler.new
+
+      @@timeout = scheduler.schedule_in "#{delay}s" do
         yield
       end
-      thread.join
-      thread
+      scheduler.join
     end
 
     def clear_timeout(thread)
-      Thread.kill(thread)
+      thread.kill
     end
 
     def set_interval(time_interval, &block)
-      thread = Thread.new do
-        loop do
-          sleep time_interval.to_i
-          yield
-        end
+      scheduler = Rufus::Scheduler.new
+      @@interval = scheduler.schedule_every "#{time_interval}s", :overlap => false do
+        yield
       end
-      thread.join
-      thread
+      scheduler.join
     end
 
     def clear_interval(thread)
-      clear_timeout(thread)
+      thread.kill
     end
 
     def wake
       @@clockNow = (@@clockLast = @@clock.now().to_i) + @@clockSkew
       @@frame = @@timeout = nil
       begin
-        self.class.timerFlush
+        self.class.timer_flush
       rescue
         #handle the error here
       ensure
@@ -142,12 +142,12 @@ module D3Timer
       @@timeout = clear_timeout(@@timeout) if (@@timeout)
       delay = time - @@clockNow; # Strictly less than if we recomputed clockNow.
       if (delay > 24)
-        @@timeout = set_timeout(time - @@clock.now().to_i - @@clockSkew){ wake } if (time < Float::INFINITY)
+        set_timeout(time - @@clock.now().to_i - @@clockSkew){ wake } if (time < Float::INFINITY)
         @@interval = clear_interval(@@interval) if (@@interval)
       else
         if (!@@interval)
           @@clockLast = @@clock.now().to_i
-          @@interval = set_interval(@@pokeDelay){ temp_test }
+          set_interval(@@pokeDelay){ temp_test }
         else
           @@frame = 1
           set_timeout{ wake }

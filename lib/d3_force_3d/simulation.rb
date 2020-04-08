@@ -17,10 +17,11 @@ module D3Force3d
       @alphaDecay = 1 - @alphaMin ** (1 / 300)
       @alphaTarget = 0
       @velocityDecay = 0.6
-      # @stepper = D3Timer::Timer.timer{ step }
-      @event = D3Dispatch::Dispatch.dispatch("tick", "end")
       @forces = {}
       initialize_nodes
+      @event = D3Dispatch::Dispatch.dispatch("tick", "end")
+      @stepper = D3Timer::Timer.new
+      @stepper.restart{ step }
     end
 
     def self.force_simulation(nodes, numDimensions = 2)
@@ -29,12 +30,12 @@ module D3Force3d
     end
 
     def restart
-      # @stepper.restart(step)
+      @stepper.restart{ step }
       self
     end
 
     def stop
-      # @stepper.stop()
+      @stepper.stop
       self
     end
 
@@ -179,11 +180,11 @@ module D3Force3d
 
     private
 
-    def step
+    def step(*args)
       tick
       @event.call("tick", self)
       if (@alpha < @alphaMin)
-        # @stepper.stop()
+        @stepper.stop()
         @event.call("end", self)
       end
     end
