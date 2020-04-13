@@ -11,17 +11,17 @@ module D3Force3d
       @nodes = nodes
       @initialRadius = 10
       @initialAngleRoll = Math::PI * (3 - Math.sqrt(5)) #Golden ratio angle
-      @initialAngleYaw = Math::PI * 20 / (9 + Math.sqrt(221)) # Markov irrational number
+      @initialAngleYaw = Math::PI * 20.0 / (9 + Math.sqrt(221)) # Markov irrational number
       @alpha = 1
       @alphaMin = 0.001
-      @alphaDecay = 1 - @alphaMin ** (1 / 300)
+      @alphaDecay = 1 - @alphaMin ** (1.0 / 300)
       @alphaTarget = 0
       @velocityDecay = 0.6
       @forces = {}
       initialize_nodes
       @event = D3Dispatch::Dispatch.dispatch("tick", "end")
       @stepper = D3Timer::Timer.new
-      @stepper.restart{ step }
+      @stepper.restart{ |elapsed_time| step(elapsed_time) }
     end
 
     def self.force_simulation(nodes, numDimensions = 2)
@@ -112,7 +112,7 @@ module D3Force3d
         else
           @forces[name] = initialize_force(args[0])
           self
-        end 
+        end
       else
         @forces[name]
       end
@@ -161,7 +161,6 @@ module D3Force3d
       loop do
         break if k >= iterations
         @alpha += (@alphaTarget - @alpha) * @alphaDecay
-        
         @forces.each do |name, force|
           force.force(@alpha)
         end
@@ -180,11 +179,11 @@ module D3Force3d
 
     private
 
-    def step(*args)
+    def step(elapsed_time)
       tick
       @event.call("tick", self)
       if (@alpha < @alphaMin)
-        @stepper.stop()
+        @stepper.stop
         @event.call("end", self)
       end
     end
