@@ -6,10 +6,10 @@ module D3Force3d
     include D3Force3d::Jiggle 
 
     def initialize(links = [], initNodes = nil, numDimensions = nil)
-      @links = links
+      @links = links.nil? ? [] : links
       @nodes = initNodes
       @nDim = numDimensions
-      @id = Proc.new{|d| d[:index] }
+      @id = Proc.new{|d| d[:index] || d["index"] }
       @strength = method(:default_strength)
       @distance = constant(30)
       @iterations = 1
@@ -23,7 +23,7 @@ module D3Force3d
       initialize_link_force
     end
 
-    def self.force_links(links)
+    def self.force_links(links = [])
       Link.new(links)
     end
 
@@ -37,21 +37,25 @@ module D3Force3d
           break if i >= n
           link = links[i]
           if link
-            source = link[:source]
-            target = link[:target]
-            y = target[:y] + target[:vy] - source[:y] - source[:vy] || jiggle if (@nDim > 1)
-            z = target[:z] + target[:vz] - source[:z] - source[:vz] || jiggle if (@nDim > 2)
+            source = link["source"]
+            target = link["target"]
+            if target["y"] && target["vy"] && source["y"] && source["vy"]
+              y = target["y"] + target["vy"] - source["y"] - source["vy"] || jiggle if (@nDim > 1)
+            end
+            if target["z"] && target["vz"] && source["z"] && source["vz"]
+              z = target["z"] + target["vz"] - source["z"] - source["vz"] || jiggle if (@nDim > 2)
+            end
             l = Math.sqrt(x * x + y * y + z * z)
-            l = (l - @distances[i]) / l * alpha * @strengths[i];
+            l = (l - @distances[i]) / l * alpha * @strengths[i].to_i
             x *= l
             y *= l
             z *= l
-            target[:vx] -= x * (b = @bias[i])
-            target[:vy] -= y * b if @nDim > 1
-            target[:vz] -= z * b if @nDim > 2
-            source[:vx] += x * (b = 1 - b)
-            source[:vy] += y * b if @nDim > 1
-            source[:vz] += z * b if @nDim > 2
+            target["vx"] -= x * (b = @bias[i]) if target["vx"]
+            target["vy"] -= y * b if target["vy"] && @nDim > 1
+            target["vz"] -= z * b if target["vz"] && @nDim > 2
+            source["vx"] += x * (b = 1 - b) if source["vx"]
+            source["vy"] += y * b if source["vy"] && @nDim > 1
+            source["vz"] += z * b if source["vz"] && @nDim > 2
           end
           i += 1
         end
@@ -61,7 +65,7 @@ module D3Force3d
 
     def links(*args)
       if args.length > 0
-        @links = args[0]
+        @links = args[0].nil? ? [] : args[0]
         initialize_link_force
         self
       else
@@ -132,18 +136,22 @@ module D3Force3d
       n = @nodes.length
       m = @links.length
       nodeById = {}
-      @nodes.each{|d, i| nodeById[@id.call(d)] = d }
+      @nodes.each do |d|
+        d.transform_keys!(&:to_s)
+        nodeById[@id.call(d)] = d
+      end
       i = 0
       @count = Array.new(n)
       loop do
         break if i >= m
         link = @links[i]
         if link
-          link[:index] = i
-          link[:source] = find(nodeById, link[:source]) if (!(link[:source].kind_of? Hash)) 
-          link[:target] = find(nodeById, link[:target]) if (!(link[:target].kind_of? Hash))
-          @count[link[:source][:index]] = (@count[link[:source][:index]] || 0) + 1 if link[:source][:index]
-          @count[link[:target][:index]] = (@count[link[:target][:index]] || 0) + 1 if link[:target][:index]
+          link.transform_keys!(&:to_s)
+          link["index"] = i
+          link["source"] = find(nodeById, link["source"]) if (link["source"] && !link["source"].kind_of?(Hash)) 
+          link["target"] = find(nodeById, link["target"]) if (link["target"] && !link["target"].kind_of?(Hash))
+          @count[link["source"]["index"]] = (@count[link["source"]["index"]] || 0) + 1 if link["source"] && link["source"]["index"]
+          @count[link["target"]["index"]] = (@count[link["target"]["index"]] || 0) + 1 if link["target"] && link["target"]["index"]
         end
         i += 1
       end
@@ -152,8 +160,8 @@ module D3Force3d
       loop do
         break if i >= m
         link = @links[i]
-        if link && link[:source][:index] && link[:target][:index]
-          @bias[i] = @count[link[:source][:index]] / (@count[link[:source][:index]] + @count[link[:target][:index]])
+        if link && link["source"] && link["target"] && link["source"]["index"] && link["target"]["index"]
+          @bias[i] = @count[link["source"]["index"]] / (@count[link["source"]["index"]] + @count[link["target"]["index"]])
         end
         i += 1
       end
@@ -186,8 +194,8 @@ module D3Force3d
     end
 
     def default_strength(link)
-      if link && link[:source][:index] && link[:target][:index]
-        1 / Math.min(@count[link[:source][:index]], @count[link[:target][:index]])
+      if link && link["source"] && link["target"] && link["source"]["index"] && link["target"]["index"]
+        1 / Math.min(@count[link["source"]["index"]], @count[link["target"]["index"]])
       end
     end
   end
