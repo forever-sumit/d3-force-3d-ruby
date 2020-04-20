@@ -19,7 +19,7 @@ describe D3Force3d do
 
     it "should assign the given numdimension value" do
       simulation = D3Force3d.force_simulation(data["nodes"], 3)
-      expect(simulation.num_dimensions).tO eq 3
+      expect(simulation.num_dimensions).to eq 3
     end
 
     it "should assign blank array to nodes if nodes is not given" do

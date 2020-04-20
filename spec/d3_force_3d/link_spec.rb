@@ -135,6 +135,23 @@ describe D3Force3d::Link do
     end
   end
 
+  context "#intialize_force_with_nodes" do
+    let(:link) { D3Force3d::Link.force_links(data) }
+
+    it "should assign the passed node and numDimension value to link object" do
+      link.intialize_force_with_nodes(data["nodes"], 3)
+      nodes = link.instance_variable_get(:@nodes)
+      nDim = link.instance_variable_get(:@nDim)
+      expect(nodes).to eq(data["nodes"])
+      expect(nDim).to eq(3)
+    end
+
+    it "should raise node not found error if node is not found for id" do
+      link.links(data["links"])
+      expect { link.intialize_force_with_nodes(data["nodes"], 3) }.to raise_error(RuntimeError, /node not found:/)
+    end
+  end
+
   context "#force" do
     let(:link) { D3Force3d::Link.force_links(data) }
 
