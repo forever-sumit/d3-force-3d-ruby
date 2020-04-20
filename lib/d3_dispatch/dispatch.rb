@@ -29,7 +29,7 @@ module D3Dispatch
       t = nil
       i = -1
       n = types_array.length
-  
+
       # If no callback was specified, return the callback of the given type and name.
       if (args.empty? && !block_given?)
         while ((i += 1) < n)
@@ -101,7 +101,7 @@ module D3Dispatch
         end
         i += 1
       end
-      c[:value]
+      c.nil? ? c : c[:value]
     end
 
     def set(type, name, &block)

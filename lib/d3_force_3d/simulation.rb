@@ -8,7 +8,7 @@ module D3Force3d
 
     def initialize(nodes = [], numDimensions)
       @nDim = [MAX_DIMENSIONS, [1, numDimensions.to_i.round].max].min
-      @nodes = nodes
+      @nodes = nodes.nil? ? [] : nodes
       @initialRadius = 10
       @initialAngleRoll = Math::PI * (3 - Math.sqrt(5)) #Golden ratio angle
       @initialAngleYaw = Math::PI * 20.0 / (9 + Math.sqrt(221)) # Markov irrational number
@@ -24,7 +24,7 @@ module D3Force3d
       @stepper.restart{ |elapsed_time| step(elapsed_time) }
     end
 
-    def self.force_simulation(nodes, numDimensions = 2)
+    def self.force_simulation(nodes = [], numDimensions = 2)
       simulation = Simulation.new(nodes, numDimensions)
       simulation
     end
@@ -41,7 +41,7 @@ module D3Force3d
 
     def num_dimensions(*args)
       if args.length > 0
-        @nDim = [MAX_DIMENSIONS, [1, args[0].to_i.round].max].min
+        @nDim = [MAX_DIMENSIONS, [1, args[0].to_f.round].max].min
         @forces.each{|force| initialize_force(force) }
         self
       else
@@ -51,7 +51,7 @@ module D3Force3d
 
     def nodes(*args)
       if args.length > 0
-        @nodes = args[0]
+        @nodes = args[0].nil? ? [] : args[0]
         initialize_nodes
         @forces.each{|force| initialize_force(force) }
         self
@@ -62,7 +62,7 @@ module D3Force3d
 
     def alpha(*args)
       if args.length > 0
-        @alpha = args[0].to_i
+        @alpha = args[0].to_f
         self
       else
         @alpha
@@ -71,7 +71,7 @@ module D3Force3d
 
     def alpha_min(*args)
       if args.length > 0
-        @alphaMin = args[0].to_i
+        @alphaMin = args[0].to_f
         self
       else
         @alphaMin
@@ -80,7 +80,7 @@ module D3Force3d
 
     def alpha_decay(*args)
       if args.length > 0
-        @alphaDecay = args[0].to_i
+        @alphaDecay = args[0].to_f
         self
       else
         @alphaDecay
@@ -89,7 +89,7 @@ module D3Force3d
 
     def alpha_target(*args)
       if args.length > 0
-        @alphaTarget = args[0].to_i
+        @alphaTarget = args[0].to_f
         self
       else
         @alphaTarget
@@ -98,10 +98,10 @@ module D3Force3d
 
     def velocity_decay(*args)
       if args.length > 0
-        @velocityDecay = 1- args[0].to_i
+        @velocityDecay = 1- args[0].to_f
         self
       else
-        1 - @velocityDecay
+        (1 - @velocityDecay).round(5)
       end
     end
 
@@ -111,8 +111,8 @@ module D3Force3d
           @forces.delete(name)
         else
           @forces[name] = initialize_force(args[0])
-          self
         end
+        self
       else
         @forces[name]
       end
@@ -120,9 +120,9 @@ module D3Force3d
 
     def find(*arguments)
       args = arguments
-      x = args.shift.to_i
-      y = @nDim > 1 ? args.shift.to_i : 0
-      z = @nDim > 2 ? args.shift.to_i : 0
+      x = args.shift.to_f
+      y = @nDim > 1 ? args.shift.to_f : 0
+      z = @nDim > 2 ? args.shift.to_f : 0
       radius = args.shift || Float::INFINITY
       i = 0
       n = @nodes.length
@@ -132,9 +132,9 @@ module D3Force3d
       loop do
         break if i >= n
         node = @nodes[i];
-        dx = x - node[:x]
-        dy = y - (node[:y] || 0)
-        dz = z - (node[:z] || 0)
+        dx = x - node["x"]
+        dy = y - (node["y"] || 0)
+        dz = z - (node["z"] || 0)
         d2 = dx * dx + dy * dy + dz * dz
         if (d2 < radius)
           closest = node
@@ -194,31 +194,32 @@ module D3Force3d
       loop do
         break if i >= n
         node = @nodes[i]
-        node[:index] = i
-        node[:x] = node[:fx] if (node[:fx] != nil)
-        node[:y] = node[:fy] if (node[:fy] != nil)
-        node[:z] = node[:fz] if (node[:fz] != nil)
-        if(is_nan?(node[:x]) || (@nDim > 1 && is_nan?(node[:y])) || (@nDim > 2 && is_nan?(node[:z])))
-          radius = @initialRadius * (@nDim > 2 ? Math.cbrt(i) : (@nDim > 1 ? Math.sqrt(i) : i))
+        node.transform_keys!(&:to_s)
+        node["index"] = i
+        node["x"] = node["fx"] if (node["fx"] != nil)
+        node["y"] = node["fy"] if (node["fy"] != nil)
+        node["z"] = node["fz"] if (node["fz"] != nil)
+        if(is_nan?(node["x"]) || (@nDim > 1 && is_nan?(node["y"])) || (@nDim > 2 && is_nan?(node["z"])))
+          radius = @initialRadius * (@nDim > 2 ? ( i == 0 ? 0 : Math.cbrt(i)): (@nDim > 1 ? Math.sqrt(i) : i))
           rollAngle = i * @initialAngleRoll
           yawAngle = i * @initialAngleYaw
           
           if (@nDim === 1)
-            node[:x] = radius
+            node["x"] = radius
           elsif (@nDim === 2)
-            node[:x] = radius * Math.cos(rollAngle)
-            node[:y] = radius * Math.sin(rollAngle)
+            node["x"] = radius * Math.cos(rollAngle)
+            node["y"] = radius * Math.sin(rollAngle)
           else 
             # 3 dimensions: use spherical distribution along 2 irrational number angles
-            node[:x] = radius * Math.sin(rollAngle) * Math.cos(yawAngle)
-            node[:y] = radius * Math.cos(rollAngle)
-            node[:z] = radius * Math.sin(rollAngle) * Math.sin(yawAngle)
+            node["x"] = radius * Math.sin(rollAngle) * Math.cos(yawAngle)
+            node["y"] = radius * Math.cos(rollAngle)
+            node["z"] = radius * Math.sin(rollAngle) * Math.sin(yawAngle)
           end
         end
-        if(is_nan?(node[:vx]) || (@nDim > 1 && is_nan?(node[:vy])) || (@nDim > 2 && is_nan?(node[:vz])))
-          node[:vx] = 0
-          node[:vy] = 0 if @nDim > 1
-          node[:vz] = 0 if @nDim > 2
+        if(is_nan?(node["vx"]) || (@nDim > 1 && is_nan?(node["vy"])) || (@nDim > 2 && is_nan?(node["vz"])))
+          node["vx"] = 0
+          node["vy"] = 0 if @nDim > 1
+          node["vz"] = 0 if @nDim > 2
         end
         i += 1
       end
@@ -230,38 +231,38 @@ module D3Force3d
     end
 
     def x(d)
-      d[:x]
+      d["x"]
     end
     
     def y(d)
-      d[:y]
+      d["y"]
     end
     
     def z(d)
-      d[:z]
+      d["z"]
     end
   
     def initializ_force_on_node(node)
-      if (node[:fx].nil?)
-        node[:x] += node[:vx] *= @velocityDecay
+      if (node["fx"].nil?)
+        node["x"] += node["vx"] *= @velocityDecay
       else
-        node[:x] = node[:fx]
-        node[:vx] = 0
+        node["x"] = node["fx"]
+        node["vx"] = 0
       end
       if (@nDim > 1)
-        if (node[:fy].nil?)
-          node[:y] += node[:vy] *= @velocityDecay;
+        if (node["fy"].nil?)
+          node["y"] += node["vy"] *= @velocityDecay;
         else
-          node[:y] = node[:fy]
-          node[:vy] = 0
+          node["y"] = node["fy"]
+          node["vy"] = 0
         end
       end
       if (@nDim > 2)
-        if (node[:fz].nil?)
-          node[:z] += node[:vz] *= @velocityDecay
+        if (node["fz"].nil?)
+          node["z"] += node["vz"] *= @velocityDecay
         else
-          node[:z] = node[:fz]
-          node[:vz] = 0
+          node["z"] = node["fz"]
+          node["vz"] = 0
         end
       end
       node
