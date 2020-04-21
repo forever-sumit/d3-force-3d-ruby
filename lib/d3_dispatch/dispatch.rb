@@ -16,7 +16,7 @@ module D3Dispatch
       t = nil
       loop do
         break if i >= n
-        raise ("illegal type: " + t) if (!(t = args[i] + "") || (_.include?(t)) || /[\s.]/.match?(t))
+        raise ("illegal type: #{t}") if ((t = args[i].to_s).empty? || (_.include?(t)) || /[\s.]/.match?(t))
         _[t] = []
         i += 1
       end
@@ -25,11 +25,10 @@ module D3Dispatch
 
     def on(typename, *args ,&block)
       _ = self._
-      types_array = parse_typenames(typename + "", _)
+      types_array = parse_typenames(typename.to_s, _)
       t = nil
       i = -1
       n = types_array.length
-
       # If no callback was specified, return the callback of the given type and name.
       if (args.empty? && !block_given?)
         while ((i += 1) < n)
@@ -37,15 +36,16 @@ module D3Dispatch
         end
       end
       #If a type was specified, set the callback for the given type and name.
-      #Otherwise, if a null callback was specified, remove callbacks of the given name.
-      # if (block_given? && typeof callback !== "function") throw new Error("invalid callback: " + callback);
+      #Otherwise, if a null callback was specified, remove callbacks of the given name. 
+      raise ("invalid callback: #{args[0]} ") if (!block_given? && !args.empty? && !args[0].nil?)
       while ((i += 1) < n)
         if((t = (typename = types_array[i])[:type]) && block_given?)
-          _[t] = set(_[t], typename[:name], &block)
+          self._[t] = set(_[t], typename[:name], &block)
         elsif(!args.empty? && args[0].nil?)
-          _.each do |key, value|
-            _[key] = set(value, typename[:name])
-          end
+          type = typename[:type]
+          # _.each do |key, value|
+            self._[type] = set(self._[type], typename[:name])
+          # end
         end
       end
       self
@@ -55,17 +55,17 @@ module D3Dispatch
       copy = {}
       _ = self._
       _.each do |key, value|
-        copy[key] = value
+        copy[key] = value.dup
       end
       Dispatch.new(copy)
     end
 
     def call(type, that = nil, *args)
-      apply(type, that, args)
+      apply(type, that, *args)
     end
 
-    def apply(type, that, args)
-      raise ("unknown type: " + type) if (!self._.include?(type))
+    def apply(type, that = nil, *args)
+      raise ("unknown type: #{type}") if (!self._.include?(type))
       t = self._[type]
       i = 0
       n = t.length
@@ -85,14 +85,14 @@ module D3Dispatch
           name = t.slice(i + 1, t.length - 1)
           t = t.slice(0, i)
         end
-        raise ("unknown type: " + t) if (t && !types.include?(t))
+        raise ("unknown type: #{t}") if (t.empty? || !types.include?(t))
         {type: t, name: name}
       end
     end
 
     def get(type, name)
       i = 0
-      n = type.length
+      n = type.nil? ? 0 : type.length
       c = nil
       loop do
         break if i >= n
