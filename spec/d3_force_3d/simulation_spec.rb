@@ -332,7 +332,7 @@ describe D3Force3d::Simulation do
   context "#tick" do
     let!(:simulation) { D3Force3d::Simulation.force_simulation(data["nodes"], 3) }
 
-    it "should call the stop method of D3Timer on timer object and return the simulation object" do
+    it "should calculate the force on nodes" do
       simulation.tick(10000)
       nodes = simulation.nodes
       file1 = File.open("spec/support/link_result.json")

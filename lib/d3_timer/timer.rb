@@ -18,7 +18,7 @@ module D3Timer
     end
 
     def self.now
-      @@clockNow || @@clockNow = @@clock.now().to_i + @@clockSkew
+      @@clockNow || @@clockNow = (@@clock.now().to_f * 1000).to_i + @@clockSkew
     end
 
     def self.timer(delay = 0, time = now, &block)
@@ -42,6 +42,7 @@ module D3Timer
     end
 
     def restart(delay = 0, time = self.class.now, &block)
+      raise TypeError.new "callback is not given or callback is not a block" if !block_given?
       time = time + delay
       if (!@_next && @@taskTail != self)
         if (@@taskTail)
@@ -93,7 +94,7 @@ module D3Timer
     end
 
     def wake
-      @@clockNow = (@@clockLast = @@clock.now().to_i) + @@clockSkew
+      @@clockNow = (@@clockLast = (@@clock.now().to_f * 1000).to_i) + @@clockSkew
       @@frame = @@timeout = nil
       begin
         self.class.timer_flush
@@ -107,7 +108,7 @@ module D3Timer
     end
 
     def poke
-      now = @@clock.now().to_i
+      now = (@@clock.now().to_f * 1000).to_i
       delay = now - @@clockLast
       if (delay > @@pokeDelay)
         @@clockSkew -= delay
@@ -137,14 +138,14 @@ module D3Timer
     def timer_sleep(time = 0)
       return if @@frame
       @@timeout = clear_timeout(@@timeout) if @@timeout
-      delay = time - @@clockNow; # Strictly less than if we recomputed clockNow.
+      delay = time - @@clockNow.to_i; # Strictly less than if we recomputed clockNow.
       if (delay > 24)
-        set_timeout(time - @@clock.now().to_i - @@clockSkew){ wake } if time < Float::INFINITY
+        set_timeout(time - (@@clock.now().to_f * 1000).to_i - @@clockSkew){ wake } if time < Float::INFINITY
         @@timeout.join if @@timeout
         @@interval = clear_interval(@@interval) if @@interval
       else
         if (!@@interval)
-          @@clockLast = @@clock.now().to_i
+          @@clockLast = (@@clock.now().to_f * 1000).to_i
           call_interval_and_timeout
           @@interval.join
           @@timeout.join if @@timeout
