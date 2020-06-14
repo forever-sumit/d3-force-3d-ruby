@@ -9,7 +9,7 @@ module D3Force3d
       @links = links.nil? ? [] : links
       @nodes = initNodes
       @nDim = numDimensions
-      @id = Proc.new{|d| d[:index] || d["index"] }
+      @id = Proc.new{|d| d[:id] || d["id"] || d[:index] || d["index"] }
       @strength = method(:default_strength)
       @distance = constant(30)
       @iterations = 1
@@ -29,13 +29,13 @@ module D3Force3d
 
     def force(alpha)
       k = 0
-      n = @links.length
+      n = @links[:links].length
       loop do
         break if k >= iterations
         i = x = y = z = 0
         loop do
           break if i >= n
-          link = links[i]
+          link = @links[:links][i]
           if link
             source = link["source"]
             target = link["target"]
@@ -56,6 +56,12 @@ module D3Force3d
             source["vx"] += x * (b = 1 - b) if source["vx"]
             source["vy"] += y * b if source["vy"] && @nDim > 1
             source["vz"] += z * b if source["vz"] && @nDim > 2
+            target["vx"]=0 if (target["vx"].abs)<0.0001
+            target["vy"]=0 if (target["vy"].abs)<0.0001 && @nDim > 1
+            target["vz"]=0 if (target["vz"].abs)<0.0001 && @nDim > 2
+            source["vx"]=0 if (source["vx"].abs)<0.0001
+            source["vy"]=0 if (source["vy"].abs)<0.0001 && @nDim > 1
+            source["vz"]=0 if (source["vz"].abs)<0.0001 && @nDim > 2
           end
           i += 1
         end
@@ -123,7 +129,7 @@ module D3Force3d
     
     def find(nodeById, nodeId)
       node = nodeById[nodeId]
-      raise ("node not found: " + nodeId) if (!node) 
+      raise ("node not found: " + nodeId) if (!node)
       node
     end
 
@@ -134,7 +140,7 @@ module D3Force3d
     def initialize_link_force
       return if (!@nodes)
       n = @nodes.length
-      m = @links.length
+      m = @links[:links].length
       nodeById = {}
       @nodes.each do |d|
         d.transform_keys!(&:to_s)
@@ -144,7 +150,7 @@ module D3Force3d
       @count = Array.new(n)
       loop do
         break if i >= m
-        link = @links[i]
+        link = @links[:links][i]
         if link
           link.transform_keys!(&:to_s)
           link["index"] = i
@@ -159,7 +165,7 @@ module D3Force3d
       @bias = Array.new(m)
       loop do
         break if i >= m
-        link = @links[i]
+        link = @links[:links][i]
         if link && link["source"] && link["target"] && link["source"]["index"] && link["target"]["index"]
           @bias[i] = @count[link["source"]["index"]] / (@count[link["source"]["index"]] + @count[link["target"]["index"]])
         end
@@ -174,10 +180,10 @@ module D3Force3d
     def initialize_strength
       return if (!@nodes)
       i = 0
-      n = @links.length
+      n = @links[:links].length
       loop do
         break if i >= n
-        @strengths[i] = @strength.call(@links[i])
+        @strengths[i] = @strength.call(@links[:links][i])
         i += 1
       end
     end
@@ -185,17 +191,18 @@ module D3Force3d
     def initialize_distance
       return if (!@nodes)
       i = 0
-      n = @links.length
+      n = @links[:links].length
       loop do
         break if i >= n
-        @distances[i] = @distance.call(@links[i])
+        @distances[i] = @distance.call(@links[:links][i])
         i += 1
       end
     end
 
     def default_strength(link)
-      if link && link["source"] && link["target"] && link["source"]["index"] && link["target"]["index"]
-        1 / Math.min(@count[link["source"]["index"]], @count[link["target"]["index"]])
+      if link && link["source"] && link["target"]
+        # 1 / Math.min(@count[link["source"]["index"]], @count[link["target"]["index"]])
+        link["value"].to_f
       end
     end
   end
